@@ -1,0 +1,3 @@
+include ':rr-lib'
+rootProject.name='rr'
+include ':app'

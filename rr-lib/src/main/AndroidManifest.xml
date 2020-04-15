@@ -1,0 +1,10 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="cn.vove7.rr_lib">
+
+    <application>
+        <service android:name="tv.zimuzu.sdk.p4pclient.P4PClientService" />
+        <provider
+            android:authorities="${applicationId}.yyets.init"
+            android:name=".InitCp"/>
+    </application>
+</manifest>
