@@ -8,7 +8,6 @@ import android.util.Log;
 import com.yyets.zimuzu.db.DBCache;
 import com.yyets.zimuzu.db.bean.FilmCacheBean;
 import com.yyets.zimuzu.util.ThrowableExtension;
-import com.yyets.zimuzu.util.ZimuzuHelper;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -28,15 +27,14 @@ import tv.zimuzu.sdk.p4pclient.P4PStat;
 
 
 public class RRFilmDownloadManager implements FileLoadingListener, P4PClientEvent {
-    private static int MAX_RUNNING_TASK = 4;
+    private static int MAX_RUNNING_TASK = 5;
     public static final RRFilmDownloadManager instance = new RRFilmDownloadManager();
-    private static File maskSaveFile;
     /* access modifiers changed from: private */
     public volatile boolean isP4pInit = false;
 
-    public HashMap<String, FilmCacheBean> mFilmCacheMap = new HashMap<>();
+    private HashMap<String, FilmCacheBean> mFilmCacheMap = new HashMap<>();
+    private static List<FilmCacheBean> uncompletedList = new ArrayList<>();
     private LinkedBlockingQueue<FilmCacheBean> waitingQueue = new LinkedBlockingQueue<>();
-
 
     private CopyOnWriteArrayList<FileLoadingListener> mLoadingListenerList = new CopyOnWriteArrayList<>();
     /* access modifiers changed from: private */
@@ -45,9 +43,11 @@ public class RRFilmDownloadManager implements FileLoadingListener, P4PClientEven
     public P4PClient p4pclient;
     private Timer timer;
 
-    List<FilmCacheBean> unbeginCache = new ArrayList<>();
-
     RRFilmDownloadManager() {
+    }
+
+    static {
+        uncompletedList.addAll(DBCache.instance.getUncompletedItems());
     }
 
     boolean beganDl = false;
@@ -60,6 +60,8 @@ public class RRFilmDownloadManager implements FileLoadingListener, P4PClientEven
             Log.w("RRFilmDownloadManager", "aleardy callInit");
             return;
         }
+        getDownloadDir(0).mkdirs();
+        getDownloadDir(1).mkdirs();
         callInit = true;
         timer = new Timer(true);
         this.p4pclient = new P4PClient();
@@ -105,37 +107,54 @@ public class RRFilmDownloadManager implements FileLoadingListener, P4PClientEven
         this.mLoadingListenerList.remove(listener);
     }
 
-    public static boolean hasUncompleteTask() {
-        ArrayList<FilmCacheBean> cacheList = DBCache.instance.getAllCacheItems();
-        for (int i = 0; i < cacheList.size(); i++) {
-            if (!cacheList.get(i).isFinished()) {
-                return true;
-            }
+    public static final int STATUS_COMPLETE = 1;
+    public static final int STATUS_WAITING = 2;
+    public static final int STATUS_DOWNLOADING = 3;
+    public static final int STATUS_PAUSED = 4;
+    public static final int STATUS_UNKNOWN = -1;
+
+    public static int getStatus(FilmCacheBean bean) {
+        if (getWaitingQueue().contains(bean)) {
+            return STATUS_WAITING;
         }
-        return false;
+        if (instance.mFilmCacheMap.containsValue(bean)) {
+            return STATUS_DOWNLOADING;
+        }
+        if (bean.isFinished()) {
+            return STATUS_COMPLETE;
+        }
+        if (uncompletedList.contains(bean)) {
+            return STATUS_PAUSED;
+        }
+        return STATUS_UNKNOWN;
     }
 
-    public static void downloadUncompleteTask(File saveFileDir, File saveMaskDir) {
-        ArrayList<FilmCacheBean> cacheList = DBCache.instance.getAllCacheItems();
-        for (int i = 0; i < cacheList.size(); i++) {
-            FilmCacheBean filmCache = cacheList.get(i);
+    public static boolean hasUncompleteTask() {
+        return !instance.uncompletedList.isEmpty();
+    }
+
+    public static void downloadUncompleteTask() {
+        for (FilmCacheBean filmCache : instance.uncompletedList) {
             if (!filmCache.isFinished()) {
-                instance.resumeFilmDownload(filmCache, saveFileDir, saveMaskDir);
+                instance.resumeFilmDownload(filmCache);
             }
         }
+        instance.uncompletedList.clear();
     }
 
     public void downloadFilm(FilmCacheBean cacheBean) {
-        resumeFilmDownload(cacheBean, getDownloadDir(1), getDownloadDir(0));
+        resumeFilmDownload(cacheBean);
         if (this.waitingQueue.contains(cacheBean)) {
             cacheBean.mLoadRate = 0;
         }
         DBCache.instance.updateDownloadPosition(cacheBean);
     }
 
-    public static void getRealFileName(FilmCacheBean cacheBean, File saveFileDir, File saveMaskDir) {
-        String name;
+    public static File getRealFileName(FilmCacheBean cacheBean) {
+        File saveFileDir = getDownloadDir(1);
+        File saveMaskDir = getDownloadDir(0);
         File saveFile;
+        String name;
         if (cacheBean != null) {
             if (StringUtils.isBlank(cacheBean.mFileName) || !cacheBean.mFileName.startsWith("/")) {
                 if (!"".equals(cacheBean.mSeason) || !"".equals(cacheBean.mEpisode)) {
@@ -144,12 +163,11 @@ public class RRFilmDownloadManager implements FileLoadingListener, P4PClientEven
                     name = cacheBean.mFilmName + "." + cacheBean.mFormatted;
                 }
                 saveFile = new File(saveFileDir, name);
-                maskSaveFile = new File(saveMaskDir, name + ".mask");
                 cacheBean.mFileName = saveFile.getPath();
             } else {
                 saveFile = new File(cacheBean.mFileName);
-                maskSaveFile = new File(saveMaskDir, saveFile.getName() + ".mask");
             }
+            File maskSaveFile = new File(saveMaskDir, saveFile.getName() + ".mask");
             if (cacheBean.mLength == 0) {
                 cacheBean.mLength = cacheBean.mSize;
             }
@@ -159,31 +177,38 @@ public class RRFilmDownloadManager implements FileLoadingListener, P4PClientEven
                     saveFile.delete();
                 }
             }
+            return maskSaveFile;
         }
+        return null;
     }
 
-    public void resumeFilmDownload(FilmCacheBean cacheBean, File saveFileDir, File saveMaskDir) {
+    public void resumeFilmDownload(FilmCacheBean cacheBean) {
         init();
         if (cacheBean != null && isP4pInit()) {
-            getRealFileName(cacheBean, saveFileDir, saveMaskDir);
+            File maskSaveFile = getRealFileName(cacheBean);
             if (this.mFilmCacheMap.size() < MAX_RUNNING_TASK) {
                 this.p4pclient.startTask(cacheBean.mFileId, cacheBean.mP4PUrl, cacheBean.mFileName, maskSaveFile.getAbsolutePath());
                 this.p4pclient.queryStat();
                 this.mFilmCacheMap.put(cacheBean.mDownloadUrl, cacheBean);
+                waitingQueue.remove(cacheBean);
             } else if (!this.waitingQueue.contains(cacheBean)) {
                 this.waitingQueue.offer(cacheBean);
             }
-            unbeginCache.remove(cacheBean);
         } else {
             beganDl = true;
-            unbeginCache.add(cacheBean);
+            waitingQueue.add(cacheBean);
         }
     }
 
-    public boolean stopLoading(String fid) {
-        this.mFilmCacheMap.remove(fid);
+    public boolean pauseLoading(String fid) {
+        FilmCacheBean b = this.mFilmCacheMap.remove(fid);
         if (mFilmCacheMap.isEmpty()) {
             destoryLater();
+        }
+        if (b != null) {
+            if (!uncompletedList.contains(b)) {
+                uncompletedList.add(b);
+            }
         }
         return this.p4pclient.stopTask(fid);
     }
@@ -200,42 +225,62 @@ public class RRFilmDownloadManager implements FileLoadingListener, P4PClientEven
         }).start();
     }
 
-    public void clearWaitingQueue() {
-        this.waitingQueue.clear();
-    }
-
-    public LinkedBlockingQueue<FilmCacheBean> getWaitingQueue() {
+    public static LinkedBlockingQueue<FilmCacheBean> getWaitingQueue() {
         return instance.waitingQueue;
     }
 
-    public void downloadComplete(FilmCacheBean cacheBean, File saveFileDir, File saveMaskDir) {
+    public void downloadComplete(FilmCacheBean cacheBean) {
         FilmCacheBean nextCacheBean;
         if (cacheBean != null) {
+            cacheBean.mLoadPosition = cacheBean.mLength;
+            DBCache.instance.updateDownloadPosition(cacheBean);
             this.p4pclient.stopTask(cacheBean.mFileId);
-            DBCache.instance.putInt(ZimuzuHelper.getFilmCacheKey(cacheBean.mFilmName, cacheBean.mSeason, cacheBean.mEpisode), 2);
             this.mFilmCacheMap.remove(cacheBean.mDownloadUrl);
             if (this.isP4pInit && this.mFilmCacheMap.size() < MAX_RUNNING_TASK && (nextCacheBean = this.waitingQueue.poll()) != null) {
-                getRealFileName(nextCacheBean, saveFileDir, saveMaskDir);
+                File maskSaveFile = getRealFileName(nextCacheBean);
                 this.p4pclient.startTask(nextCacheBean.mFileId, nextCacheBean.mP4PUrl, nextCacheBean.mFileName, maskSaveFile.getAbsolutePath());
                 this.p4pclient.queryStat();
                 this.mFilmCacheMap.put(nextCacheBean.mDownloadUrl, nextCacheBean);
             }
+            if (mFilmCacheMap.isEmpty()) {
+                destoryLater();
+            }
         }
     }
 
-    public void cancelAllLoading() {
+    public void pauseAllLoading() {
         beganDl = false;
-        this.waitingQueue.clear();
         for (FilmCacheBean cacheBean : this.mFilmCacheMap.values()) {
             this.p4pclient.stopTask(cacheBean.mFileId);
             this.p4pclient.queryStat();
+            if (!uncompletedList.contains(cacheBean)) {
+                uncompletedList.add(cacheBean);
+            }
         }
         this.mFilmCacheMap.clear();
+        uncompletedList.addAll(waitingQueue);
+        this.waitingQueue.clear();
+        destoryLater();
     }
 
-    public void cancelLoading(FilmCacheBean cacheBean, File saveFileDir, File saveMaskDir) {
+    //取消下载 且删除文件
+    public boolean cancelDownload(String yyetsUri) {
+        FilmCacheBean b = DBCache.instance.getCacheByUri(yyetsUri);
+        if (b != null) {
+            pauseLoading(b);
+            uncompletedList.remove(b);
+            boolean isdel = new File(b.mFileName).delete();
+            return true;
+        }
+        return false;
+    }
+
+    public void pauseLoading(FilmCacheBean cacheBean) {
         FilmCacheBean nextCacheBean;
         if (cacheBean != null) {
+            if (!uncompletedList.contains(cacheBean)) {
+                uncompletedList.add(cacheBean);
+            }
             if (this.waitingQueue.contains(cacheBean)) {
                 this.waitingQueue.remove(cacheBean);
                 return;
@@ -243,11 +288,14 @@ public class RRFilmDownloadManager implements FileLoadingListener, P4PClientEven
             this.p4pclient.stopTask(cacheBean.mFileId);
             this.p4pclient.queryStat();
             this.mFilmCacheMap.remove(cacheBean.mDownloadUrl);
+            if (mFilmCacheMap.isEmpty()) {
+                destoryLater();
+            }
             if (this.isP4pInit && this.mFilmCacheMap.size() < MAX_RUNNING_TASK && (nextCacheBean = this.waitingQueue.poll()) != null) {
-                getRealFileName(nextCacheBean, saveFileDir, saveMaskDir);
+                File maskSaveFile = getRealFileName(nextCacheBean);
                 this.p4pclient.startTask(nextCacheBean.mFileId, nextCacheBean.mP4PUrl, nextCacheBean.mFileName, maskSaveFile.getAbsolutePath());
                 this.p4pclient.queryStat();
-                this.mFilmCacheMap.put(nextCacheBean.mDownloadUrl, nextCacheBean);
+                this.mFilmCacheMap.put(nextCacheBean.mFileId, nextCacheBean);
             }
         }
     }
@@ -283,6 +331,8 @@ public class RRFilmDownloadManager implements FileLoadingListener, P4PClientEven
             if (mFilmCacheMap.isEmpty()) {
                 destoryLater();
             }
+            cacheBean.mLoadPosition = cacheBean.mLength;
+            DBCache.instance.updateDownloadPosition(cacheBean);
         }
     }
 
@@ -305,7 +355,7 @@ public class RRFilmDownloadManager implements FileLoadingListener, P4PClientEven
         }
     }
 
-    private File getDownloadDir(int type) {
+    private static File getDownloadDir(int type) {
         String paths = Environment.getExternalStorageDirectory().getPath();
 
         return new File(
@@ -324,9 +374,11 @@ public class RRFilmDownloadManager implements FileLoadingListener, P4PClientEven
 
     private void resumeUnbegan() {
         new Handler().postDelayed(() -> {
-            Log.d("RRFilmDownloadManager", "resumeUnbegan  " + unbeginCache.size());
-            for (FilmCacheBean filmCacheBean : unbeginCache) {
-                downloadFilm(filmCacheBean);
+            Log.d("RRFilmDownloadManager", "resumeUnbegan  " + waitingQueue.size());
+            if (callInit && isP4pInit) {
+                for (FilmCacheBean filmCacheBean : waitingQueue) {
+                    downloadFilm(filmCacheBean);
+                }
             }
         }, 2000);
     }
@@ -366,6 +418,16 @@ public class RRFilmDownloadManager implements FileLoadingListener, P4PClientEven
     }
 
     public void onTaskStat(P4PStat stat) {
+        for (P4PStat.P4PTaskStat s : stat.getStats()) {
+            String fileId = s.getId();
+            FilmCacheBean bean = getBeanByFileId(fileId);
+            if (s.getState() == 2 || s.getFinishedSize() >= s.getFileSize()) {
+                downloadComplete(bean);
+            } else if (bean != null) {
+                bean.mLoadPosition = s.getFinishedSize();
+                DBCache.instance.updateDownloadPosition(bean);
+            }
+        }
         if (this.p4pListener != null) {
             try {
                 this.p4pListener.onTaskStat(stat);
@@ -373,5 +435,9 @@ public class RRFilmDownloadManager implements FileLoadingListener, P4PClientEven
                 ThrowableExtension.printStackTrace(e);
             }
         }
+    }
+
+    public static FilmCacheBean getBeanByFileId(String fileId) {
+        return instance.mFilmCacheMap.get(fileId);
     }
 }

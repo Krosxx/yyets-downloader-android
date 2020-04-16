@@ -15,7 +15,12 @@ import org.json.JSONObject;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
+import kotlin.text.MatchResult;
+import kotlin.text.Regex;
 
 public class FilmCacheBean implements Serializable, Comparable<FilmCacheBean> {
     public static final int STATE_LOAD = 1;
@@ -92,8 +97,51 @@ public class FilmCacheBean implements Serializable, Comparable<FilmCacheBean> {
         this.isDeleted = false;
     }
 
-    public FilmCacheBean(String filmId, String fileId, String filmName, String fileName, String url, String season, String episode, long size, String resFmt, String subtitle, String p4pUrl, String filmImg) {
+    public FilmCacheBean(String filmId, String fileId, String filmName, String fileName,
+                         String url, String season, String episode, long size, String resFmt,
+                         String subtitle, String p4pUrl, String filmImg) {
         this(filmId, fileId, filmName, fileName, url, season, episode, size, resFmt, subtitle, 0, size, p4pUrl, filmImg);
+    }
+
+    public static FilmCacheBean parseFromUri(
+            String yyetsUri, String filmId, String filmImg
+    ) {
+        //"yyets://N=惊异传奇.Amazing.Stories.S01E01.中英字幕.WEBrip.720P-人人影视.mp4|S=645322560|H=650ed8f2a2fecc011f17e0edf3154b6f2e878cf2|"
+
+        String s = yyetsUri.substring(8, yyetsUri.length() - 1);
+        Map<String, String> map = new HashMap<>();
+        for (String s1 : s.split("\\|")) {
+            String[] s2 = s1.split("=");
+            map.put(s2[0], s2[1]);
+        }
+        String name = map.get("N");
+
+        Regex r = new Regex("S(\\d\\d)E(\\d\\d)");
+
+        MatchResult mr = r.find(name, 0);
+        String season = "", episode = "";
+        if (mr != null) {
+            season = String.valueOf(Integer.parseInt(mr.getGroupValues().get(1)));
+            episode = String.valueOf(Integer.parseInt(mr.getGroupValues().get(2)));
+        }
+        String filmName = name.substring(0, name.indexOf('.'));
+
+        String fmt = name.substring(name.lastIndexOf('.') + 1);
+        return new FilmCacheBean(
+                filmId,
+                map.get("H"),
+                filmName,
+                "",
+                map.get("H"),
+                season,
+                episode,
+                Long.parseLong(map.get("S")),
+                fmt,
+                "",
+                yyetsUri,
+                filmImg
+        );
+
     }
 
     public FilmCacheBean(String filmId, String fileId, String filmName, String fileName, String url, String season, String episode, long size, String resFmt, String subtitle, long loadPos, long len, String p4pUrl, String filmImg) {
@@ -178,11 +226,11 @@ public class FilmCacheBean implements Serializable, Comparable<FilmCacheBean> {
             return false;
         }
         FilmCacheBean that = (FilmCacheBean) o;
-        if (this.mFileName != null) {
-            return this.mFileName.equals(that.mFileName);
+        if (this.mFileId != null) {
+            return this.mFileId.equals(that.mFileId);
         }
-        if (this.mFilmId != null) {
-            return this.mFilmId.equals(that.mFilmId);
+        if (this.mP4PUrl != null) {
+            return this.mFilmId.equals(that.mP4PUrl);
         }
         if (that.mFileName != null) {
             return false;

@@ -4,92 +4,27 @@ import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.text.TextUtils;
+
 import com.yyets.zimuzu.db.bean.FilmCacheBean;
+
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import cn.vove7.rr_lib.InitCp;
 
 public enum DBCache {
     instance;
-    
+
     private Set<String> filmCacheBeans = new HashSet<>();
     private DBHelper mDBHelper = new DBHelper(InitCp.androidContext);
 
     private SQLiteDatabase mDb = mDBHelper.getWritableDatabase();
+
     static {
         instance.getAllCacheItems();
-    }
-
-    public synchronized void deleteCache(String key) {
-        long delete = (long) this.mDb.delete(DBHelper.TB_DB_CACHE, "key=?", new String[]{key});
-    }
-
-    public synchronized void putString(String key, String data) {
-        ContentValues cv = new ContentValues();
-        byte[] dataArr = data.getBytes();
-        cv.put("key", key);
-        cv.put("data", dataArr);
-        cv.put(DBHelper.COL_UPDATE_TIME, Integer.valueOf((int) (System.currentTimeMillis() / 1000)));
-        long insertWithOnConflict = this.mDb.insertWithOnConflict(DBHelper.TB_DB_CACHE, (String) null, cv, 5);
-    }
-
-    public synchronized void putInt(String key, int data) {
-        putString(key, String.valueOf(data));
-    }
-
-    public synchronized void putBoolean(String key, boolean data) {
-        putString(key, data ? "true" : "false");
-    }
-
-    public String getString(String key) {
-        String data = null;
-        Cursor cursor = this.mDb.query(false, DBHelper.TB_DB_CACHE, (String[]) null, "key=?", new String[]{key}, (String) null, (String) null, (String) null, (String) null);
-        if (cursor != null) {
-            try {
-                if (cursor.moveToFirst()) {
-                    int validity = cursor.getInt(cursor.getColumnIndex(DBHelper.COL_VALIDITY));
-                    int updateTime = cursor.getInt(cursor.getColumnIndex(DBHelper.COL_UPDATE_TIME));
-                    if (validity == 0 || (System.currentTimeMillis() / 1000) - ((long) validity) <= ((long) updateTime)) {
-                        data = new String(cursor.getBlob(cursor.getColumnIndex("data")));
-                    } else {
-                        cursor.close();
-                        if (cursor == null) {
-                            return null;
-                        }
-                        cursor.close();
-                        return null;
-                    }
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-                if (cursor != null) {
-                    cursor.close();
-                }
-            } catch (Throwable th) {
-                if (cursor != null) {
-                    cursor.close();
-                }
-                throw th;
-            }
-        }
-        cursor.close();
-        if (cursor != null) {
-            cursor.close();
-        }
-        return data;
-    }
-
-    public int getInt(String key, int def) {
-        String data = getString(key);
-        return data == null ? def : Integer.parseInt(data, def);
-    }
-
-    public boolean getBoolean(String key, boolean def) {
-        String data = getString(key);
-        return TextUtils.isEmpty(data) ? def : "true".equals(data);
     }
 
     public synchronized long updateDownloadPosition(FilmCacheBean data) {
@@ -100,6 +35,22 @@ public enum DBCache {
             updateDownloadPosition = updateDownloadPosition(data.mFilmId, data.mFileId, data.mDownloadUrl, data.mFilmName, data.mFileName, data.mSeason, data.mEpisode, data.mSize, data.mFormatted, data.mSubtitle, data.mLoadPosition, data.mLength, data.mDownloadTime, data.mP4PUrl, data.mFilmImg);
         }
         return updateDownloadPosition;
+    }
+
+    public boolean hasDownloadComplete(String filmId, String season, String episode) {
+        FilmCacheBean data = null;
+        Cursor cursor = this.mDb.query(false, DBHelper.TB_FILE_DOWNLOAD,
+                (String[]) null, "film_id=? and season=? and episode=?",
+                new String[]{filmId, season, episode},
+                (String) null, (String) null, (String) null, (String) null);
+        if (cursor != null && cursor.moveToFirst()) {
+            data = getFilmCacheByCursor(cursor);
+        }
+        cursor.close();
+        if (data == null) {
+            return false;
+        }
+        return data.isFinished();
     }
 
     public synchronized long updateDownloadPosition(String filmId, String fileId, String url, String filmName, String fileName, String season, String episode, long size, String formatted, String subtitle, long loadPos, long length, long downloadTime, String p4pUrl, String filmImg) {
@@ -155,6 +106,28 @@ public enum DBCache {
             cursor.close();
         }
         return data;
+    }
+
+    public FilmCacheBean getCacheByUri(String yyUri) {
+        FilmCacheBean data = null;
+        if (!TextUtils.isEmpty(yyUri)) {
+            Cursor cursor = this.mDb.query(false, DBHelper.TB_FILE_DOWNLOAD, (String[]) null, "p4p_url=?", new String[]{yyUri}, (String) null, (String) null, (String) null, (String) null);
+            if (cursor != null && cursor.moveToFirst()) {
+                data = getFilmCacheByCursor(cursor);
+            }
+            cursor.close();
+        }
+        return data;
+    }
+
+    public List<FilmCacheBean> getUncompletedItems() {
+        List<FilmCacheBean> ul = new ArrayList<>();
+        for (FilmCacheBean item : getAllCacheItemsByTime()) {
+            if (!item.isFinished()) {
+                ul.add(item);
+            }
+        }
+        return ul;
     }
 
     public ArrayList<FilmCacheBean> getAllCacheItems() {
@@ -242,14 +215,6 @@ public enum DBCache {
     public long removeFilmCache(String downloadUrl) {
         this.filmCacheBeans.remove(downloadUrl);
         return (long) this.mDb.delete(DBHelper.TB_FILE_DOWNLOAD, "url=?", new String[]{downloadUrl});
-    }
-
-    public synchronized boolean hasCollectionResource(String resourceId) {
-        boolean status;
-        Cursor c = this.mDb.rawQuery("SELECT * FROM collection_resource WHERE resource_id = '" + resourceId + "'", (String[]) null);
-        status = c.getCount() != 0;
-        c.close();
-        return status;
     }
 
 }
