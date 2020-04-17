@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Timer;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -33,7 +34,7 @@ public class RRFilmDownloadManager implements FileLoadingListener, P4PClientEven
     public volatile boolean isP4pInit = false;
 
     private HashMap<String, FilmCacheBean> mFilmCacheMap = new HashMap<>();
-    private static List<FilmCacheBean> uncompletedList = new ArrayList<>();
+    private static ConcurrentSkipListSet<FilmCacheBean> uncompletedList = new ConcurrentSkipListSet(new ArrayList<>()) ;
     private LinkedBlockingQueue<FilmCacheBean> waitingQueue = new LinkedBlockingQueue<>();
 
     private CopyOnWriteArrayList<FileLoadingListener> mLoadingListenerList = new CopyOnWriteArrayList<>();
@@ -44,6 +45,10 @@ public class RRFilmDownloadManager implements FileLoadingListener, P4PClientEven
     private Timer timer;
 
     RRFilmDownloadManager() {
+    }
+
+    public static ConcurrentSkipListSet<FilmCacheBean> getUncompletedList() {
+        return uncompletedList;
     }
 
     static {
@@ -184,6 +189,7 @@ public class RRFilmDownloadManager implements FileLoadingListener, P4PClientEven
 
     public void resumeFilmDownload(FilmCacheBean cacheBean) {
         init();
+        uncompletedList.remove(cacheBean);
         if (cacheBean != null && isP4pInit()) {
             File maskSaveFile = getRealFileName(cacheBean);
             if (this.mFilmCacheMap.size() < MAX_RUNNING_TASK) {
