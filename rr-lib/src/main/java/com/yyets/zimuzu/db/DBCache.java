@@ -15,6 +15,8 @@ import java.util.Set;
 
 import cn.vove7.rr_lib.InitCp;
 
+import static com.yyets.zimuzu.db.DBHelper.TB_FILE_DOWNLOAD;
+
 public enum DBCache {
     instance;
 
@@ -39,7 +41,7 @@ public enum DBCache {
 
     public boolean hasDownloadComplete(String filmId, String season, String episode) {
         FilmCacheBean data = null;
-        Cursor cursor = this.mDb.query(false, DBHelper.TB_FILE_DOWNLOAD,
+        Cursor cursor = this.mDb.query(false, TB_FILE_DOWNLOAD,
                 (String[]) null, "film_id=? and season=? and episode=?",
                 new String[]{filmId, season, episode},
                 (String) null, (String) null, (String) null, (String) null);
@@ -72,7 +74,7 @@ public enum DBCache {
             cv.put(DBHelper.COL_DOWNLOAD_TIME, String.valueOf(downloadTime));
             cv.put(DBHelper.COL_P4P_URL, p4pUrl);
             cv.put(DBHelper.COL_IMG_URL, filmImg);
-            result = (long) this.mDb.update(DBHelper.TB_FILE_DOWNLOAD, cv, "url=?", new String[]{url});
+            result = (long) this.mDb.update(TB_FILE_DOWNLOAD, cv, "url=?", new String[]{url});
         } else {
             this.filmCacheBeans.add(url);
             ContentValues cv2 = new ContentValues();
@@ -91,7 +93,7 @@ public enum DBCache {
             cv2.put(DBHelper.COL_DOWNLOAD_TIME, String.valueOf(downloadTime));
             cv2.put(DBHelper.COL_P4P_URL, p4pUrl);
             cv2.put(DBHelper.COL_IMG_URL, filmImg);
-            result = this.mDb.insert(DBHelper.TB_FILE_DOWNLOAD, (String) null, cv2);
+            result = this.mDb.insert(TB_FILE_DOWNLOAD, (String) null, cv2);
         }
         return result;
     }
@@ -99,7 +101,7 @@ public enum DBCache {
     public FilmCacheBean getCacheById(String id) {
         FilmCacheBean data = null;
         if (!TextUtils.isEmpty(id)) {
-            Cursor cursor = this.mDb.query(false, DBHelper.TB_FILE_DOWNLOAD, (String[]) null, "file_id=?", new String[]{id}, (String) null, (String) null, (String) null, (String) null);
+            Cursor cursor = this.mDb.query(false, TB_FILE_DOWNLOAD, (String[]) null, "file_id=?", new String[]{id}, (String) null, (String) null, (String) null, (String) null);
             if (cursor != null && cursor.moveToFirst()) {
                 data = getFilmCacheByCursor(cursor);
             }
@@ -111,7 +113,7 @@ public enum DBCache {
     public FilmCacheBean getCacheByUri(String yyUri) {
         FilmCacheBean data = null;
         if (!TextUtils.isEmpty(yyUri)) {
-            Cursor cursor = this.mDb.query(false, DBHelper.TB_FILE_DOWNLOAD, (String[]) null, "p4p_url=?", new String[]{yyUri}, (String) null, (String) null, (String) null, (String) null);
+            Cursor cursor = this.mDb.query(false, TB_FILE_DOWNLOAD, (String[]) null, "p4p_url=?", new String[]{yyUri}, (String) null, (String) null, (String) null, (String) null);
             if (cursor != null && cursor.moveToFirst()) {
                 data = getFilmCacheByCursor(cursor);
             }
@@ -142,6 +144,10 @@ public enum DBCache {
             cursor.close();
         }
         return results;
+    }
+
+    public boolean deleteCache(String rrUri) {
+        return mDb.delete(TB_FILE_DOWNLOAD, "p4p_url=?", new String[]{rrUri}) > 0;
     }
 
     public ArrayList<FilmCacheBean> getAllCacheItemsByTime() {
@@ -175,7 +181,7 @@ public enum DBCache {
     public FilmCacheBean getFilmDownloadBean(String url) {
         FilmCacheBean data = null;
         if (!TextUtils.isEmpty(url)) {
-            Cursor cursor = this.mDb.query(false, DBHelper.TB_FILE_DOWNLOAD, (String[]) null, "url=?", new String[]{url}, (String) null, (String) null, (String) null, (String) null);
+            Cursor cursor = this.mDb.query(false, TB_FILE_DOWNLOAD, (String[]) null, "url=?", new String[]{url}, (String) null, (String) null, (String) null, (String) null);
             if (cursor != null && cursor.moveToFirst()) {
                 data = getFilmCacheByCursor(cursor);
             }
@@ -214,7 +220,7 @@ public enum DBCache {
 
     public long removeFilmCache(String downloadUrl) {
         this.filmCacheBeans.remove(downloadUrl);
-        return (long) this.mDb.delete(DBHelper.TB_FILE_DOWNLOAD, "url=?", new String[]{downloadUrl});
+        return (long) this.mDb.delete(TB_FILE_DOWNLOAD, "url=?", new String[]{downloadUrl});
     }
 
 }

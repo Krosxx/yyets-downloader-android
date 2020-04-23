@@ -15,7 +15,6 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Timer;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -34,7 +33,7 @@ public class RRFilmDownloadManager implements FileLoadingListener, P4PClientEven
     public volatile boolean isP4pInit = false;
 
     private HashMap<String, FilmCacheBean> mFilmCacheMap = new HashMap<>();
-    private static ConcurrentSkipListSet<FilmCacheBean> uncompletedList = new ConcurrentSkipListSet(new ArrayList<>()) ;
+    private static ConcurrentSkipListSet<FilmCacheBean> uncompletedList = new ConcurrentSkipListSet(new ArrayList<>());
     private LinkedBlockingQueue<FilmCacheBean> waitingQueue = new LinkedBlockingQueue<>();
 
     private CopyOnWriteArrayList<FileLoadingListener> mLoadingListenerList = new CopyOnWriteArrayList<>();
@@ -276,7 +275,10 @@ public class RRFilmDownloadManager implements FileLoadingListener, P4PClientEven
             pauseLoading(b);
             uncompletedList.remove(b);
             boolean isdel = new File(b.mFileName).delete();
-            return true;
+            if (isdel) {
+                DBCache.instance.deleteCache(yyetsUri);
+            }
+            return isdel;
         }
         return false;
     }
