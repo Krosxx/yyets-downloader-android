@@ -272,7 +272,9 @@ public class RRFilmDownloadManager implements FileLoadingListener, P4PClientEven
     public boolean cancelDownload(String yyetsUri) {
         FilmCacheBean b = DBCache.instance.getCacheByUri(yyetsUri);
         if (b != null) {
-            pauseLoading(b);
+            if(isP4pInit) {
+                pauseLoading(b);
+            }
             uncompletedList.remove(b);
             boolean isdel = new File(b.mFileName).delete();
             if (isdel) {
