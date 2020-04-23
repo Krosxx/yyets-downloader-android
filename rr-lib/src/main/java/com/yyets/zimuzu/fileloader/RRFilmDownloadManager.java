@@ -269,8 +269,8 @@ public class RRFilmDownloadManager implements FileLoadingListener, P4PClientEven
     }
 
     //取消下载 且删除文件
-    public boolean cancelDownload(String yyetsUri) {
-        FilmCacheBean b = DBCache.instance.getCacheByUri(yyetsUri);
+    public boolean cancelDownload(String fileId) {
+        FilmCacheBean b = DBCache.instance.getCacheById(fileId);
         if (b != null) {
             if(isP4pInit) {
                 pauseLoading(b);
@@ -278,7 +278,7 @@ public class RRFilmDownloadManager implements FileLoadingListener, P4PClientEven
             uncompletedList.remove(b);
             boolean isdel = new File(b.mFileName).delete();
             if (isdel) {
-                DBCache.instance.deleteCache(yyetsUri);
+                DBCache.instance.removeFilmCache(fileId);
             }
             return isdel;
         }

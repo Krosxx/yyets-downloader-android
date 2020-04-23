@@ -146,10 +146,6 @@ public enum DBCache {
         return results;
     }
 
-    public boolean deleteCache(String rrUri) {
-        return mDb.delete(TB_FILE_DOWNLOAD, "p4p_url=?", new String[]{rrUri}) > 0;
-    }
-
     public ArrayList<FilmCacheBean> getAllCacheItemsByTime() {
         ArrayList<FilmCacheBean> results = new ArrayList<>();
         Cursor cursor = this.mDb.rawQuery("SELECT * FROM file_download ORDER BY download_time DESC, film_name, CAST(season as int), CAST(episode as int)", (String[]) null);
