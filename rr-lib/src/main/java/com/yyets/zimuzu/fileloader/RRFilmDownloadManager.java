@@ -71,7 +71,7 @@ public class RRFilmDownloadManager implements FileLoadingListener, P4PClientEven
         this.p4pclient = new P4PClient();
         this.p4pclient.setEventListener(this);
         this.p4pclient.init(ctx);
-        this.timer.schedule(new RRFilmDownloadManager$1(this, ctx), 5000, 5000);
+        this.timer.schedule(new RRFilmDownloadManager$1(this, ctx), 100, 2000);
     }
 
     public void destroy() {
