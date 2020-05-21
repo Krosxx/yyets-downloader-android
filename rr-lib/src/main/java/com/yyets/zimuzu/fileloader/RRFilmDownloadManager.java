@@ -187,10 +187,10 @@ public class RRFilmDownloadManager implements FileLoadingListener, P4PClientEven
     }
 
     public void resumeFilmDownload(FilmCacheBean cacheBean) {
+        File maskSaveFile = getRealFileName(cacheBean);
         init();
         uncompletedList.remove(cacheBean);
         if (cacheBean != null && isP4pInit()) {
-            File maskSaveFile = getRealFileName(cacheBean);
             if (this.mFilmCacheMap.size() < MAX_RUNNING_TASK) {
                 this.p4pclient.startTask(cacheBean.mFileId, cacheBean.mP4PUrl, cacheBean.mFileName, maskSaveFile.getAbsolutePath());
                 this.p4pclient.queryStat();
