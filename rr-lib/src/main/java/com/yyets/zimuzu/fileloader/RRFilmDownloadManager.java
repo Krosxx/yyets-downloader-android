@@ -160,16 +160,17 @@ public class RRFilmDownloadManager implements FileLoadingListener, P4PClientEven
         File saveFile;
         String name;
         if (cacheBean != null) {
-            if (StringUtils.isBlank(cacheBean.mFileName) || !cacheBean.mFileName.startsWith("/")) {
+            String preName = cacheBean.mFilmName.replace(' ', '_');
+            if (StringUtils.isBlank(preName) || !preName.startsWith("/")) {
                 if (!"".equals(cacheBean.mSeason) || !"".equals(cacheBean.mEpisode)) {
-                    name = cacheBean.mFilmName + ".s" + cacheBean.mSeason + "e" + cacheBean.mEpisode + "." + cacheBean.mFormatted;
+                    name = preName + ".s" + cacheBean.mSeason + "e" + cacheBean.mEpisode + "." + cacheBean.mFormatted;
                 } else {
-                    name = cacheBean.mFilmName + "." + cacheBean.mFormatted;
+                    name = preName + "." + cacheBean.mFormatted;
                 }
                 saveFile = new File(saveFileDir, name);
                 cacheBean.mFileName = saveFile.getPath();
             } else {
-                saveFile = new File(cacheBean.mFileName);
+                saveFile = new File(preName);
             }
             File maskSaveFile = new File(saveMaskDir, saveFile.getName() + ".mask");
             if (cacheBean.mLength == 0) {
@@ -272,7 +273,7 @@ public class RRFilmDownloadManager implements FileLoadingListener, P4PClientEven
     public boolean cancelDownload(String fileId) {
         FilmCacheBean b = DBCache.instance.getCacheById(fileId);
         if (b != null) {
-            if(isP4pInit) {
+            if (isP4pInit) {
                 pauseLoading(b);
             }
             uncompletedList.remove(b);
