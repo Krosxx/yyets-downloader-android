@@ -277,10 +277,8 @@ public class RRFilmDownloadManager implements FileLoadingListener, P4PClientEven
                 pauseLoading(b);
             }
             uncompletedList.remove(b);
-            boolean isdel = new File(b.mFileName).delete();
-            if (isdel) {
-                DBCache.instance.removeFilmCache(fileId);
-            }
+            new File(b.mFileName).delete();
+            DBCache.instance.removeFilmCache(fileId);
             return isdel;
         }
         return false;
