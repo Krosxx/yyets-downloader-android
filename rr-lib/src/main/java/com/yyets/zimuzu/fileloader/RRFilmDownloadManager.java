@@ -413,7 +413,7 @@ public class RRFilmDownloadManager implements FileLoadingListener, P4PClientEven
         Log.d("p4pclient", "p4p client restarted");
         this.p4pclient.start("tracker2.zmzfile.com:25289,tracker3.zmzfile.com:25289,tracker4.zmzfile.com:25289,tracker5.zmzfile.com:25289",
                 "http://htracker2.zmzfile.com:6105/rt/p4proute,http://htracker3.zmzfile.com:6105/rt/p4proute,http://htracker4.zmzfile.com:6105/rt/p4proute,http://htracker5.zmzfile.com:6105/rt/p4proute",
-                "stun.zmzfile.com",
+                "ct.p4pfile.com",
                 "1231234",
                 "12213423");
         this.p4pclient.enableLogConsole();
