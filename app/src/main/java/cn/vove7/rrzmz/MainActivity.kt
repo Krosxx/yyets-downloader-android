@@ -1,5 +1,6 @@
 package cn.vove7.rrzmz
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -57,7 +58,8 @@ class MainActivity : AppCompatActivity(), P4PClientEvent {
             requestPermissions(
                 arrayOf(
                     "android.permission.WRITE_EXTERNAL_STORAGE",
-                    "android.permission.READ_EXTERNAL_STORAGE"
+                    "android.permission.READ_EXTERNAL_STORAGE",
+                    "android.permission.ACCESS_NETWORK_STATE"
                 ), 1
             )
         }
@@ -66,36 +68,38 @@ class MainActivity : AppCompatActivity(), P4PClientEvent {
         RRFilmDownloadManager.instance.setP4PListener(this)
     }
 
-    fun onViewClick(view: View) = when (view.id) {
-        R.id.add_task -> {
-            AlertDialog.Builder(this).setTitle("新建下载")
-                .setView(R.layout.dialog_new_task)
-                .setPositiveButton("确定") { d, _ ->
-                    val et: EditText? = (d as AlertDialog).findViewById(R.id.edit_text)
-                    val uri = et?.text.toString()
-                    if (uri.startsWith("yyets://") && uri.endsWith("|")) {
-                        val cacheBean = FilmCacheBean.parseFromUri(
-                            uri,
-                            uri.hashCode().toString(),
-                            ""
-                        )
-                        RRFilmDownloadManager.instance.downloadFilm(cacheBean)
-                        caches.add(cacheBean)
-                        adapter.notifyDataSetChanged()
-                    } else {
-                        Toast.makeText(this, "下载链接错误", Toast.LENGTH_LONG).show()
-                    }
-                }.show()
-        }
-        R.id.pause_all -> {
-            RRFilmDownloadManager.instance.pauseAllLoading()
-            adapter.notifyDataSetChanged()
-        }
-        R.id.start_all -> {
-            RRFilmDownloadManager.downloadUncompleteTask()
-            adapter.notifyDataSetChanged()
-        }
-        else -> {
+    fun onViewClick(view: View) {
+        when (view.id) {
+            R.id.add_task -> {
+                AlertDialog.Builder(this).setTitle("新建下载")
+                    .setView(R.layout.dialog_new_task)
+                    .setPositiveButton("确定") { d, _ ->
+                        val et: EditText? = (d as AlertDialog).findViewById(R.id.edit_text)
+                        val uri = et?.text.toString()
+                        if (uri.startsWith("yyets://") && uri.endsWith("|")) {
+                            val cacheBean = FilmCacheBean.parseFromUri(
+                                uri,
+                                uri.hashCode().toString(),
+                                ""
+                            )
+                            RRFilmDownloadManager.instance.downloadFilm(cacheBean)
+                            caches.add(cacheBean)
+                            adapter.notifyDataSetChanged()
+                        } else {
+                            Toast.makeText(this, "下载链接错误", Toast.LENGTH_LONG).show()
+                        }
+                    }.show()
+            }
+            R.id.pause_all -> {
+                RRFilmDownloadManager.instance.pauseAllLoading()
+                adapter.notifyDataSetChanged()
+            }
+            R.id.start_all -> {
+                RRFilmDownloadManager.downloadUncompleteTask()
+                adapter.notifyDataSetChanged()
+            }
+            else -> {
+            }
         }
     }
 
@@ -125,12 +129,12 @@ class MainActivity : AppCompatActivity(), P4PClientEvent {
     }
 
     private fun log(s: String?) {
-        Log.d("RRFilmDownloadManager", s)
+        Log.d("RRFilmDownloadManager", s ?: "s==null")
     }
 
 }
 
-class Adapter(val caches: List<FilmCacheBean>) :
+class Adapter(val caches: MutableList<FilmCacheBean>) :
     BaseAdapter() {
 
     private val speedMap = mutableMapOf<String, String>()
@@ -140,6 +144,7 @@ class Adapter(val caches: List<FilmCacheBean>) :
         notifyDataSetChanged()
     }
 
+    @SuppressLint("SetTextI18n")
     override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
         val item = getItem(position)
         return (convertView ?: LayoutInflater.from(parent?.context)
@@ -147,7 +152,7 @@ class Adapter(val caches: List<FilmCacheBean>) :
 
             val status = RRFilmDownloadManager.getStatus(item)
 
-            status_view.text = status?.let {
+            status_view.text = status.let {
                 if (it == RRFilmDownloadManager.STATUS_DOWNLOADING)
                     speedMap[item.mFileId] + "\t\t ${item.mLoadPosition}/${item.mLength}" else it.toString
             }
@@ -158,6 +163,11 @@ class Adapter(val caches: List<FilmCacheBean>) :
                 RRFilmDownloadManager.STATUS_PAUSED -> "开始"
                 RRFilmDownloadManager.STATUS_COMPLETE -> "播放"
                 else -> "。。。"
+            }
+            del_button.setOnClickListener {
+                RRFilmDownloadManager.instance.cancelDownload(item.mFileId)
+                caches.remove(item)
+                notifyDataSetChanged()
             }
             progress_view.progress = (item.mLoadPosition * 100 / item.mLength).toInt()
 

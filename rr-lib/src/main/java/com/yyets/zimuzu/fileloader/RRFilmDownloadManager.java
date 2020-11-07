@@ -1,12 +1,12 @@
 package com.yyets.zimuzu.fileloader;
 
 import android.content.Context;
-import android.os.Environment;
 import android.os.Handler;
 import android.util.Log;
 
 import com.yyets.zimuzu.db.DBCache;
 import com.yyets.zimuzu.db.bean.FilmCacheBean;
+import com.yyets.zimuzu.util.RRLog;
 import com.yyets.zimuzu.util.ThrowableExtension;
 
 import org.apache.commons.lang3.StringUtils;
@@ -20,7 +20,7 @@ import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import cn.vove7.rr_lib.InitCp;
+import cn.vove7.rr_lib.AndroidHelper;
 import tv.zimuzu.sdk.p4pclient.P4PClient;
 import tv.zimuzu.sdk.p4pclient.P4PClientEvent;
 import tv.zimuzu.sdk.p4pclient.P4PStat;
@@ -59,7 +59,7 @@ public class RRFilmDownloadManager implements FileLoadingListener, P4PClientEven
     private boolean callInit = false;
 
     public void init() {
-        Context ctx = InitCp.androidContext;
+        Context ctx = AndroidHelper.getAndroidContext();
         if (callInit) {
             Log.w("RRFilmDownloadManager", "aleardy callInit");
             return;
@@ -188,6 +188,7 @@ public class RRFilmDownloadManager implements FileLoadingListener, P4PClientEven
     }
 
     public void resumeFilmDownload(FilmCacheBean cacheBean) {
+        RRLog.log("resumeFilmDownload " + cacheBean);
         File maskSaveFile = getRealFileName(cacheBean);
         init();
         uncompletedList.remove(cacheBean);
@@ -285,6 +286,7 @@ public class RRFilmDownloadManager implements FileLoadingListener, P4PClientEven
     }
 
     public void pauseLoading(FilmCacheBean cacheBean) {
+        RRLog.log("pauseLoading: " + cacheBean);
         FilmCacheBean nextCacheBean;
         if (cacheBean != null) {
             if (!uncompletedList.contains(cacheBean)) {
@@ -365,11 +367,9 @@ public class RRFilmDownloadManager implements FileLoadingListener, P4PClientEven
     }
 
     private static File getDownloadDir(int type) {
-        String paths = Environment.getExternalStorageDirectory().getPath();
-
+        File paths = AndroidHelper.getAndroidContext().getExternalFilesDir(null);
         return new File(
-                paths,
-                "Android/data/" + InitCp.androidContext.getPackageName() + "/" + (type == 0 ? "." : "") + "download"
+                paths, (type == 0 ? "." : "") + "download"
         );
     }
 
@@ -397,7 +397,7 @@ public class RRFilmDownloadManager implements FileLoadingListener, P4PClientEven
         Log.d("p4pclient", "p4p client inited");
         this.p4pclient.start("tracker2.zmzfile.com:25289,tracker3.zmzfile.com:25289,tracker4.zmzfile.com:25289,tracker5.zmzfile.com:25289",
                 "http://htracker2.zmzfile.com:6105/rt/p4proute,http://htracker3.zmzfile.com:6105/rt/p4proute,http://htracker4.zmzfile.com:6105/rt/p4proute,http://htracker5.zmzfile.com:6105/rt/p4proute",
-                "stun.zmzfile.com",
+                "ct.zmzfile.com",
                 "1231234",
                 "12213423");
         this.p4pclient.enableLogConsole();

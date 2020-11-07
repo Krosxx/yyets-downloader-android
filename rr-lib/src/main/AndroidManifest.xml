@@ -3,8 +3,5 @@
 
     <application>
         <service android:name="tv.zimuzu.sdk.p4pclient.P4PClientService" />
-        <provider
-            android:authorities="${applicationId}.yyets.init"
-            android:name=".InitCp"/>
     </application>
 </manifest>

@@ -72,10 +72,6 @@ public class FilmCacheBean implements Serializable, Comparable<FilmCacheBean> {
         this.isDeleted = deleted;
     }
 
-    public String toString() {
-        return "FilmCacheBean{mFilmId='" + this.mFilmId + '\'' + ", mFilmName='" + this.mFilmName + '\'' + ", mFilmImg='" + this.mFilmImg + '\'' + ", mFileId='" + this.mFileId + '\'' + ", mFileName='" + this.mFileName + '\'' + ", mDownloadUrl='" + this.mDownloadUrl + '\'' + ", mSeason='" + this.mSeason + '\'' + ", mEpisode='" + this.mEpisode + '\'' + ", mSize=" + this.mSize + ", mFormatted='" + this.mFormatted + '\'' + ", mSubtitle='" + this.mSubtitle + '\'' + ", mLength=" + this.mLength + ", mLoadPosition=" + this.mLoadPosition + ", mDownloadTime=" + this.mDownloadTime + ", mP4PUrl='" + this.mP4PUrl + '\'' + ", mProgress=" + this.mProgress + ", mLoadRate=" + this.mLoadRate + ", mStatus=" + this.mStatus + ", channletype=" + this.channletype + ", isCheck=" + this.isCheck + ", isDeleted=" + this.isDeleted + '}';
-    }
-
     public FilmCacheBean() {
         this.mFilmId = "";
         this.mFilmName = "";
@@ -279,5 +275,10 @@ public class FilmCacheBean implements Serializable, Comparable<FilmCacheBean> {
             e2 = 0;
         }
         return e1 - e2;
+    }
+
+    @Override
+    public String toString() {
+        return "FilmCacheBean{" + mP4PUrl + '}';
     }
 }

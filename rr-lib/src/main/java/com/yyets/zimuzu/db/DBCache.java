@@ -13,17 +13,17 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import cn.vove7.rr_lib.InitCp;
+import cn.vove7.rr_lib.AndroidHelper;
 
 import static com.yyets.zimuzu.db.DBHelper.TB_FILE_DOWNLOAD;
 
 public enum DBCache {
     instance;
 
-    private Set<String> filmCacheBeans = new HashSet<>();
-    private DBHelper mDBHelper = new DBHelper(InitCp.androidContext);
+    private final Set<String> filmCacheBeans = new HashSet<>();
+    private final DBHelper mDBHelper = new DBHelper(AndroidHelper.getAndroidContext());
 
-    private SQLiteDatabase mDb = mDBHelper.getWritableDatabase();
+    private final SQLiteDatabase mDb = mDBHelper.getWritableDatabase();
 
     static {
         instance.getAllCacheItems();

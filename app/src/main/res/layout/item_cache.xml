@@ -20,6 +20,13 @@
         android:layout_marginTop="10dp"
         android:text="开始" />
 
+    <Button
+        android:id="@+id/del_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:text="删除" />
+
     <TextView
         android:id="@+id/status_view"
         android:layout_width="wrap_content"
