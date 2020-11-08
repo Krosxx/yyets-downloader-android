@@ -120,28 +120,30 @@ public class RRFilmDownloadManager implements FileLoadingListener, P4PClientEven
     public static final int STATUS_UN_DOWNLOAD = -2;
 
     public static FilmStatus getStatus(String filmId, String season, String episode) {
-        return getStatus(DBCache.instance.getBeanByFSE(filmId, season, episode));
-    }
-
-    public static FilmStatus getStatus(FilmCacheBean bean) {
+        FilmCacheBean bean = DBCache.instance.getBeanByFSE(filmId, season, episode);
         if (bean == null) {
             return new FilmStatus(STATUS_UN_DOWNLOAD, 0);
         }
+        return new FilmStatus(getStatus(bean), bean.mProgress / 100);
+    }
+
+    public static int getStatus(FilmCacheBean bean) {
+        if (bean == null) {
+            return STATUS_UN_DOWNLOAD;
+        }
         if (getWaitingQueue().contains(bean)) {
-            return new FilmStatus(STATUS_WAITING, 0);
+            return STATUS_WAITING;
         }
         if (instance.mFilmCacheMap.containsValue(bean)) {
-            FilmCacheBean cache = finFromCache(instance.mFilmCacheMap.values(), bean);
-            return new FilmStatus(STATUS_DOWNLOADING, cache.mProgress);
+            return STATUS_DOWNLOADING;
         }
         if (bean.isFinished()) {
-            return new FilmStatus(STATUS_COMPLETE, 1);
+            return STATUS_COMPLETE;
         }
         if (uncompletedList.contains(bean)) {
-            FilmCacheBean cache = finFromCache(uncompletedList, bean);
-            return new FilmStatus(STATUS_PAUSED, cache.mProgress);
+            return STATUS_PAUSED;
         }
-        return new FilmStatus(STATUS_UNKNOWN, 0);
+        return STATUS_UNKNOWN;
     }
 
     private static FilmCacheBean finFromCache(Collection<FilmCacheBean> ls, FilmCacheBean bean) {
@@ -168,12 +170,12 @@ public class RRFilmDownloadManager implements FileLoadingListener, P4PClientEven
     }
 
     public static void downloadUncompleteTask() {
-        for (FilmCacheBean filmCache : instance.uncompletedList) {
+        for (FilmCacheBean filmCache : uncompletedList) {
             if (!filmCache.isFinished()) {
                 instance.resumeFilmDownload(filmCache);
             }
         }
-        instance.uncompletedList.clear();
+        uncompletedList.clear();
     }
 
     public void downloadFilm(FilmCacheBean cacheBean) {

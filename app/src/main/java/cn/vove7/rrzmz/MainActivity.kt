@@ -150,14 +150,14 @@ class Adapter(val caches: MutableList<FilmCacheBean>) :
         return (convertView ?: LayoutInflater.from(parent?.context)
             .inflate(R.layout.item_cache, parent, false)).apply {
 
-            val fs = RRFilmDownloadManager.getStatus(item)
+            val status = RRFilmDownloadManager.getStatus(item)
 
-            status_view.text = fs.status.let {
+            status_view.text = status.let {
                 if (it == RRFilmDownloadManager.STATUS_DOWNLOADING)
                     speedMap[item.mFileId] + "\t\t ${item.mLoadPosition}/${item.mLength}" else it.toString
             }
             name_view.text = "${item.mFilmName}  S${item.mSeason}E${item.mEpisode}"
-            action_button.text = when (fs.status) {
+            action_button.text = when (status) {
                 RRFilmDownloadManager.STATUS_DOWNLOADING -> "暂停"
                 RRFilmDownloadManager.STATUS_WAITING -> "等待"
                 RRFilmDownloadManager.STATUS_PAUSED -> "开始"
@@ -172,7 +172,7 @@ class Adapter(val caches: MutableList<FilmCacheBean>) :
             progress_view.progress = (item.mLoadPosition * 100 / item.mLength).toInt()
 
             action_button.setOnClickListener {
-                when (fs.status) {
+                when (status) {
                     RRFilmDownloadManager.STATUS_DOWNLOADING -> {
                         RRFilmDownloadManager.instance.pauseLoading(item)
                         notifyDataSetChanged()

@@ -36,6 +36,7 @@ public enum DBCache {
         if (data == null) {
             updateDownloadPosition = -1;
         } else {
+            data.updateProgress();
             updateDownloadPosition = updateDownloadPosition(data.mFilmId, data.mFileId, data.mDownloadUrl, data.mFilmName, data.mFileName, data.mSeason, data.mEpisode, data.mSize, data.mFormatted, data.mSubtitle, data.mLoadPosition, data.mLength, data.mDownloadTime, data.mP4PUrl, data.mFilmImg);
         }
         return updateDownloadPosition;
@@ -141,7 +142,7 @@ public enum DBCache {
 
     public ArrayList<FilmCacheBean> getAllCacheItems() {
         ArrayList<FilmCacheBean> results = new ArrayList<>();
-        Cursor cursor = this.mDb.rawQuery("SELECT * FROM file_download ORDER BY CAST(season as int), CAST(episode as int), download_time DESC", (String[]) null);
+        Cursor cursor = this.mDb.rawQuery("SELECT * FROM file_download ORDER BY download_time DESC, CAST(season as int), CAST(episode as int)", (String[]) null);
         if (cursor != null) {
             while (cursor.moveToNext()) {
                 FilmCacheBean bean = getFilmCacheByCursor(cursor);
@@ -209,10 +210,7 @@ public enum DBCache {
         if (cache.mLength == 0) {
             cache.mLength = cache.mSize;
         }
-        cache.mProgress = cache.mLength == 0 ? 0.0f : Float.parseFloat(df.format((((double) cache.mLoadPosition) * 100.0d) / ((double) cache.mLength)));
-        if (cache.mProgress > 100.0f) {
-            cache.mProgress = 100.0f;
-        }
+        cache.updateProgress();
         cache.mFormatted = cursor.getString(cursor.getColumnIndex(DBHelper.COL_FILM_FORMATTED));
         cache.mSubtitle = cursor.getString(cursor.getColumnIndex(DBHelper.COL_FILM_SUBTITLE));
         cache.mDownloadTime = Long.parseLong(cursor.getString(cursor.getColumnIndex(DBHelper.COL_DOWNLOAD_TIME)));

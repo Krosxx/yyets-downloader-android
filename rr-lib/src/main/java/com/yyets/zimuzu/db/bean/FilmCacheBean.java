@@ -14,6 +14,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.Serializable;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -97,6 +98,14 @@ public class FilmCacheBean implements Serializable, Comparable<FilmCacheBean> {
                          String url, String season, String episode, long size, String resFmt,
                          String subtitle, String p4pUrl, String filmImg) {
         this(filmId, fileId, filmName, fileName, url, season, episode, size, resFmt, subtitle, 0, size, p4pUrl, filmImg);
+    }
+
+    public void updateProgress() {
+        DecimalFormat df = new DecimalFormat("#.00");
+        mProgress = mLength == 0 ? 0.0f : Float.parseFloat(df.format((((double) mLoadPosition) * 100.0d) / ((double) mLength)));
+        if (mProgress > 100.0f) {
+            mProgress = 100.0f;
+        }
     }
 
     public static FilmCacheBean parseFromUri(
