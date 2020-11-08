@@ -158,8 +158,8 @@ public class RRFilmDownloadManager implements FileLoadingListener, P4PClientEven
     }
 
     public static class FilmStatus {
-        int status;
-        float progress;
+        public int status;
+        public float progress;
 
         public FilmStatus(int status, float progress) {
             this.status = status;
