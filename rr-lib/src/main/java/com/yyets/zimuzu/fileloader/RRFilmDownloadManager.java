@@ -13,6 +13,7 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Timer;
@@ -116,25 +117,54 @@ public class RRFilmDownloadManager implements FileLoadingListener, P4PClientEven
     public static final int STATUS_DOWNLOADING = 3;
     public static final int STATUS_PAUSED = 4;
     public static final int STATUS_UNKNOWN = -1;
+    public static final int STATUS_UN_DOWNLOAD = -2;
 
-    public static int getStatus(FilmCacheBean bean) {
+    public static FilmStatus getStatus(String filmId, String season, String episode) {
+        return getStatus(DBCache.instance.getBeanByFSE(filmId, season, episode));
+    }
+
+    public static FilmStatus getStatus(FilmCacheBean bean) {
+        if (bean == null) {
+            return new FilmStatus(STATUS_UN_DOWNLOAD, 0);
+        }
         if (getWaitingQueue().contains(bean)) {
-            return STATUS_WAITING;
+            return new FilmStatus(STATUS_WAITING, 0);
         }
         if (instance.mFilmCacheMap.containsValue(bean)) {
-            return STATUS_DOWNLOADING;
+            FilmCacheBean cache = finFromCache(instance.mFilmCacheMap.values(), bean);
+            return new FilmStatus(STATUS_DOWNLOADING, cache.mProgress);
         }
         if (bean.isFinished()) {
-            return STATUS_COMPLETE;
+            return new FilmStatus(STATUS_COMPLETE, 1);
         }
         if (uncompletedList.contains(bean)) {
-            return STATUS_PAUSED;
+            FilmCacheBean cache = finFromCache(uncompletedList, bean);
+            return new FilmStatus(STATUS_PAUSED, cache.mProgress);
         }
-        return STATUS_UNKNOWN;
+        return new FilmStatus(STATUS_UNKNOWN, 0);
+    }
+
+    private static FilmCacheBean finFromCache(Collection<FilmCacheBean> ls, FilmCacheBean bean) {
+        for (FilmCacheBean l : ls) {
+            if (l.equals(bean)) {
+                return l;
+            }
+        }
+        return bean;
     }
 
     public static boolean hasUncompleteTask() {
         return !instance.uncompletedList.isEmpty();
+    }
+
+    public static class FilmStatus {
+        int status;
+        float progress;
+
+        public FilmStatus(int status, float progress) {
+            this.status = status;
+            this.progress = progress;
+        }
     }
 
     public static void downloadUncompleteTask() {

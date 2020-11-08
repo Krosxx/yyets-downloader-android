@@ -226,7 +226,7 @@ public class FilmCacheBean implements Serializable, Comparable<FilmCacheBean> {
             return this.mFileId.equals(that.mFileId);
         }
         if (this.mP4PUrl != null) {
-            return this.mFilmId.equals(that.mP4PUrl);
+            return this.mP4PUrl.equals(that.mP4PUrl);
         }
         if (that.mFileName != null) {
             return false;

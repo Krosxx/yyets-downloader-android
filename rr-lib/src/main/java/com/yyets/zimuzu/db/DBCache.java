@@ -5,6 +5,8 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.text.TextUtils;
 
+import androidx.annotation.Nullable;
+
 import com.yyets.zimuzu.db.bean.FilmCacheBean;
 
 import java.text.DecimalFormat;
@@ -39,7 +41,8 @@ public enum DBCache {
         return updateDownloadPosition;
     }
 
-    public boolean hasDownloadComplete(String filmId, String season, String episode) {
+    @Nullable
+    public FilmCacheBean getBeanByFSE(String filmId, String season, String episode) {
         FilmCacheBean data = null;
         Cursor cursor = this.mDb.query(false, TB_FILE_DOWNLOAD,
                 (String[]) null, "film_id=? and season=? and episode=?",
@@ -48,7 +51,11 @@ public enum DBCache {
         if (cursor != null && cursor.moveToFirst()) {
             data = getFilmCacheByCursor(cursor);
         }
-        cursor.close();
+        return data;
+    }
+
+    public boolean hasDownloadComplete(String filmId, String season, String episode) {
+        FilmCacheBean data = getBeanByFSE(filmId, season, episode);
         if (data == null) {
             return false;
         }
@@ -134,7 +141,7 @@ public enum DBCache {
 
     public ArrayList<FilmCacheBean> getAllCacheItems() {
         ArrayList<FilmCacheBean> results = new ArrayList<>();
-        Cursor cursor = this.mDb.rawQuery("SELECT * FROM file_download ORDER BY film_name, CAST(season as int), CAST(episode as int), download_time DESC", (String[]) null);
+        Cursor cursor = this.mDb.rawQuery("SELECT * FROM file_download ORDER BY CAST(season as int), CAST(episode as int), download_time DESC", (String[]) null);
         if (cursor != null) {
             while (cursor.moveToNext()) {
                 FilmCacheBean bean = getFilmCacheByCursor(cursor);
